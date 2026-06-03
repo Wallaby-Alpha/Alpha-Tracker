@@ -199,9 +199,13 @@ with tab1:
 
     with st.expander("ℹ️ How to use", expanded=False):
         st.markdown("""
-1. Export a holder list as CSV from Solscan, Birdeye, or similar
-2. Upload it below and hit **Run Cohort Analysis**
-3. Whales & Sharks found here are automatically available in the **Whale Overlap** tab
+1. **Prepare a CSV of Solana wallet addresses.** Any CSV with a column of wallet addresses works — the app will detect the address column automatically. Some ways to get one:
+   - **Solscan:** go to a token page → *Holders* tab → *Download CSV*
+   - **Birdeye / Dexscreener:** holder exports from the token analytics pages
+   - **Your own list:** paste addresses into a spreadsheet, save as CSV — one address per row is fine
+2. Upload the CSV below and hit **Run Cohort Analysis**
+3. Results bucket each wallet into Whale / Shark / Dolphin / Fish / Minnow tiers by total portfolio value
+4. Whales & Sharks are automatically passed to the **Whale Overlap** and **Recent Buys** tabs for deeper analysis
 """)
 
     c1_file = st.file_uploader("Upload holder CSV", type=["csv"], key="c1_file")
