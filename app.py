@@ -205,7 +205,7 @@ with tab1:
    - **Your own list:** paste addresses into a spreadsheet, save as CSV — one address per row is fine
 2. Upload the CSV below and hit **Run Cohort Analysis**
 3. Results bucket each wallet into Whale / Shark / Dolphin / Fish / Minnow tiers by total portfolio value
-4. Whales & Sharks are automatically passed to the **Whale Overlap** and **Recent Buys** tabs for deeper analysis
+4. Whales, Sharks & Dolphins are automatically passed to the **Whale Overlap** and **Recent Buys** tabs for deeper analysis
 """)
 
     c1_file = st.file_uploader("Upload holder CSV", type=["csv"], key="c1_file")
@@ -242,14 +242,14 @@ with tab1:
         status.empty()
         prog.empty()
 
-        # Save whales+sharks to session state for Tab 2
+        # Save whales+sharks+dolphins to session state for Tab 2 & 3
         big_wallets = [
             r["wallet"] for r in rows
-            if r["cohort"] in ("Whale 🐋", "Shark 🦈")
+            if r["cohort"] in ("Whale 🐋", "Shark 🦈", "Dolphin 🐬")
         ]
         st.session_state["whale_wallets"] = big_wallets
         if big_wallets:
-            st.success(f"✅ {len(big_wallets)} Whale/Shark wallets saved — available in Whale Overlap and Recent Buys tabs.")
+            st.success(f"✅ {len(big_wallets)} Whale/Shark/Dolphin wallets saved — available in Whale Overlap and Recent Buys tabs.")
 
         # Distribution metrics
         st.markdown("---")
@@ -290,7 +290,7 @@ with tab2:
     with st.expander("ℹ️ How to use", expanded=False):
         st.markdown("""
 **Two ways to load wallets:**
-- Run the Cohort Analyzer first → Whales & Sharks auto-populate here
+- Run the Cohort Analyzer first → Whales, Sharks & Dolphins auto-populate here
 - Or paste wallet addresses directly (one per line)
 
 Results show every token held by 2+ of the wallets, ranked by how many wallets share it.
@@ -300,17 +300,17 @@ Stablecoins and wSOL are filtered out automatically.
     # Source selector
     source = st.radio(
         "Wallet source",
-        ["Use Whales/Sharks from Cohort tab", "Paste wallets manually", "Upload new CSV"],
+        ["Use Whales/Sharks/Dolphins from Cohort tab", "Paste wallets manually", "Upload new CSV"],
         key="t2_source",
         horizontal=True,
     )
 
     t2_wallets = []
 
-    if source == "Use Whales/Sharks from Cohort tab":
+    if source == "Use Whales/Sharks/Dolphins from Cohort tab":
         saved = st.session_state.get("whale_wallets", [])
         if saved:
-            st.success(f"{len(saved)} wallets loaded from Cohort Analysis.")
+            st.success(f"{len(saved)} wallets loaded from Cohort Analysis (Whales, Sharks & Dolphins).")
             t2_wallets = saved
             with st.expander("View wallets"):
                 for w in saved:
@@ -539,7 +539,7 @@ def scan_wallet_acquisitions(wallet: str, helius_url: str, cutoff_ts: int) -> li
 # ══════════════════════════════════════════════════════════════════════════════
 with tab3:
     st.header("Recent Buys")
-    st.caption("What tokens have whales/sharks actually purchased in the last N days?")
+    st.caption("What tokens have whales/sharks/dolphins actually purchased in the last N days?")
 
     with st.expander("ℹ️ How to use", expanded=False):
         st.markdown("""
@@ -552,17 +552,17 @@ with tab3:
     # Wallet source — same pattern as Tab 2
     t3_source = st.radio(
         "Wallet source",
-        ["Use Whales/Sharks from Cohort tab", "Paste wallets manually", "Upload new CSV"],
+        ["Use Whales/Sharks/Dolphins from Cohort tab", "Paste wallets manually", "Upload new CSV"],
         key="t3_source",
         horizontal=True,
     )
 
     t3_wallets = []
 
-    if t3_source == "Use Whales/Sharks from Cohort tab":
+    if t3_source == "Use Whales/Sharks/Dolphins from Cohort tab":
         saved3 = st.session_state.get("whale_wallets", [])
         if saved3:
-            st.success(f"{len(saved3)} wallets loaded from Cohort Analysis.")
+            st.success(f"{len(saved3)} wallets loaded from Cohort Analysis (Whales, Sharks & Dolphins).")
             t3_wallets = saved3
             with st.expander("View wallets"):
                 for w in saved3:
@@ -698,7 +698,7 @@ with tab3:
             if coordinated:
                 st.markdown("---")
                 st.subheader(f"🚨 Coordination Signals — bought by {t3_min_shared}+ wallets")
-                st.caption("These tokens were independently acquired by multiple whales/sharks in your window.")
+                st.caption("These tokens were independently acquired by multiple whales/sharks/dolphins in your window.")
                 coord_rows = []
                 for s in coordinated:
                     coord_rows.append({
