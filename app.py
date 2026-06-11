@@ -61,10 +61,6 @@ MAX_WALLETS = 150
 # The label after the # is just for your reference; it has no effect on the app.
 # ══════════════════════════════════════════════════════════════════════════════
 PRESET_WALLETS = [
-    "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",  # example wallet 1
-    "AnotherWalletAddressHere",                        # example wallet 2
-    # keep adding more below this line, same format:
-    PRESET_WALLETS = [
     "5N69dUvxdiQGFaRob32oPSwLuUYTqNgHz6GoEtnrRd8S",  # suppoman
     "AQ8t7FmGaDQ4AqmNtaX2d9NqfACCHb16yKo8BavExWkV",  # suppo1
     "2UGhBWG6K9UJq5iM96t1PebJfCBuNxYgYjwNsvE9nwBw",  # Suppoman alt5
