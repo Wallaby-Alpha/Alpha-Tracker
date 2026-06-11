@@ -296,7 +296,6 @@ PRESET_WALLETS = [
     "5JgADWaAVpDib4cCM868Q2MdHfAAoUjZrzghB2YSg4C1",  # Cg Altszn
     "5oRNbpo9jSAhJsqiidUjnrF7DrnjgSKMZ9trXKHbmzpw",  # suppo for sure
 ]
-]
 # ══════════════════════════════════════════════════════════════════════════════
 # ▲▲▲  END OF WALLET LIST  ▲▲▲
 # ══════════════════════════════════════════════════════════════════════════════
