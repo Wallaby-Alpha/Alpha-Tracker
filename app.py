@@ -1,12 +1,13 @@
 """
 Solana Wallet Intelligence
 ===========================
-Three-tab Streamlit app — deploy free on Streamlit Community Cloud.
+Five-tab Streamlit app — deploy free on Streamlit Community Cloud.
 
 Tab 1 — Cohort Analyzer:     classify holders by total wallet net worth
 Tab 2 — Whale Overlap:       find what tokens the big wallets currently share
 Tab 3 — Recent Acquisitions: what have whales/sharks actually bought in last N days
 Tab 4 — Watchlist:           scan your personal preset list of wallets for recent buys
+Tab 5 — Common Holders:      find wallets that appear on both of two holder CSVs
 
 To add paid access gating later:
   1. In Streamlit Cloud dashboard → Secrets, add:
@@ -53,6 +54,11 @@ SKIP_TOKENS = {
 }
 
 MAX_WALLETS = 150
+
+# Candidate column names commonly used in Solscan / Birdeye / Dexscreener holder exports
+ADDRESS_COL_CANDIDATES = [
+    "Account", "Wallet Address", "Wallet", "Address", "Owner", "owner", "address", "wallet",
+]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -369,6 +375,18 @@ def parse_wallets_from_csv(uploaded) -> list:
     return df[col].dropna().astype(str).str.strip().unique().tolist()
 
 
+def detect_holder_address_col(df: pd.DataFrame):
+    """Detect the wallet-address column in a holder export.
+
+    Tries known Solscan/Birdeye/Dexscreener column names first,
+    then falls back to scanning for a column containing Solana addresses.
+    """
+    for cand in ADDRESS_COL_CANDIDATES:
+        if cand in df.columns:
+            return cand
+    return detect_address_col(df)
+
+
 # ── global sidebar: API key + remember me ────────────────────────────────────
 with st.sidebar:
     st.title("🔬 Solana Wallet Intel")
@@ -430,11 +448,12 @@ HELIUS_URL = f"https://mainnet.helius-rpc.com/?api-key={helius_key.strip()}" if 
 
 
 # ── tabs ──────────────────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "🐋 Cohort Analyzer",
     "🔍 Whale Overlap",
     "📅 Recent Buys",
     "📌 Watchlist",
+    "🤝 Common Holders",
 ])
 
 
@@ -815,7 +834,11 @@ def render_acquisition_results(
     days: int,
     download_filename: str,
 ):
-    """Shared display logic for Tab 3 and Tab 4."""
+    """Shared display logic for Tab 3 and Tab 4.
+
+    Shows EVERY individual buy (not just shared ones), plus a separate
+    'Coordination Signals' section highlighting tokens bought by N+ wallets.
+    """
     summary = []
     for mint, buying_wallets in token_wallets.items():
         meta   = token_meta.get(mint, {"symbol": mint[:8], "name": ""})
@@ -860,9 +883,30 @@ def render_acquisition_results(
     else:
         st.info(f"No tokens were bought by {min_shared}+ wallets in this window. Try lowering the threshold or extending the lookback.")
 
-    # Full table
+    # All buys — every individual acquisition, one row per buy
     st.markdown("---")
-    st.subheader(f"📋 All acquisitions ({len(summary)} unique tokens)")
+    st.subheader(f"🛒 All Buys ({len(all_acq)} acquisitions across {len(summary)} unique tokens)")
+    st.caption("Every individual buy by every scanned wallet — not just shared/coordinated ones.")
+
+    buys_rows = []
+    for acq in sorted(all_acq, key=lambda x: x["timestamp"], reverse=True):
+        meta = token_meta.get(acq["mint"], {"symbol": acq["mint"][:8], "name": ""})
+        buys_rows.append({
+            "Date":           acq["date"],
+            "Wallet":         acq["wallet"],
+            "Symbol":         meta["symbol"],
+            "Name":           meta["name"],
+            "Amount":         acq["amount_received"],
+            "Wallets (total)": len(token_wallets[acq["mint"]]),
+            "🚨 Coordinated": "✅" if len(token_wallets[acq["mint"]]) >= min_shared else "",
+            "Mint":           acq["mint"],
+            "Tx":             acq["tx_sig"],
+        })
+    st.dataframe(pd.DataFrame(buys_rows), use_container_width=True, hide_index=True)
+
+    # Per-token summary table
+    st.markdown("---")
+    st.subheader(f"📋 Token Summary ({len(summary)} unique tokens)")
     st.dataframe(pd.DataFrame([{
         "Symbol":         s["symbol"],
         "Name":           s["name"],
@@ -873,7 +917,7 @@ def render_acquisition_results(
         "Mint":           s["mint"],
     } for s in summary]), use_container_width=True, hide_index=True)
 
-    # Download
+    # Download — every individual buy
     st.markdown("---")
     dl_rows = []
     for acq in all_acq:
@@ -906,7 +950,8 @@ with tab3:
         st.markdown("""
 - Run **Cohort Analyzer** first to auto-populate wallets, or paste/upload your own list
 - Set your lookback window (1–30 days)
-- Results show every token acquired, flagged when 2+ wallets bought the same one — that's your coordination signal
+- Results show **every individual buy** by every scanned wallet, plus a separate section
+  flagging tokens bought by 2+ wallets — that's your coordination signal
 - Stablecoins and wSOL are filtered automatically
 """)
 
@@ -1092,4 +1137,62 @@ with tab4:
                 all_acq4, token_wallets4, token_meta4,
                 len(PRESET_WALLETS), t4_min_shared, t4_days,
                 f"watchlist_acquisitions_{t4_days}d.csv",
+            )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  TAB 5 — COMMON HOLDERS
+# ══════════════════════════════════════════════════════════════════════════════
+with tab5:
+    st.header("Common Holders Finder")
+    st.caption("Find wallets that hold both Token A and Token B from two holder export CSVs.")
+
+    with st.expander("ℹ️ How to use", expanded=False):
+        st.markdown("""
+1. Export holder lists for two tokens (e.g. from Solscan's *Holders* tab → *Download CSV*)
+2. Upload each CSV below
+3. The address column is detected automatically (works with Solscan's `Account`,
+   Birdeye/Dexscreener exports, or any CSV containing a column of Solana addresses)
+4. Common holders — wallets present in both files — are listed and downloadable
+""")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        file1 = st.file_uploader("Token A holder CSV", type="csv", key="ch_file1")
+    with col2:
+        file2 = st.file_uploader("Token B holder CSV", type="csv", key="ch_file2")
+
+    if file1 and file2:
+        df1 = pd.read_csv(file1)
+        df2 = pd.read_csv(file2)
+
+        col1_name = detect_holder_address_col(df1)
+        col2_name = detect_holder_address_col(df2)
+
+        if not col1_name or not col2_name:
+            st.error(
+                "Couldn't detect a wallet address column in one or both files. "
+                "Expected a column named one of: " + ", ".join(ADDRESS_COL_CANDIDATES) +
+                ", or a column containing valid Solana addresses."
+            )
+        else:
+            st.caption(f"Token A address column: `{col1_name}`  ·  Token B address column: `{col2_name}`")
+
+            addrs1 = set(df1[col1_name].dropna().astype(str).str.strip())
+            addrs2 = set(df2[col2_name].dropna().astype(str).str.strip())
+            common = addrs1 & addrs2
+
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Token A holders", len(addrs1))
+            m2.metric("Token B holders", len(addrs2))
+            m3.metric("Common holders", len(common))
+
+            common_df = pd.DataFrame(sorted(common), columns=["Wallet Address"])
+            st.dataframe(common_df, use_container_width=True, hide_index=True)
+
+            st.download_button(
+                "⬇️ Download common holders CSV",
+                common_df.to_csv(index=False).encode(),
+                "common_holders.csv",
+                "text/csv",
             )
